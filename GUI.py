@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
+from network_init import initialize_network as init_network
 
 class GUI:
     def __init__(self, root):
@@ -113,15 +114,15 @@ class GUI:
 
         training_tab = self.create_text_tab(notebook, "Training Results")
         notebook.add(training_tab, text="  Training Results  ")
-        self.training_text = training_tab.winfo_children()[0]      
+        self.training_text = training_tab.winfo_children()[0].winfo_children()[0]      
 
         testing_tab = self.create_text_tab(notebook, "Testing Results")
         notebook.add(testing_tab, text="  Testing Results  ")
-        self.testing_text = testing_tab.winfo_children()[0]
+        self.testing_text = testing_tab.winfo_children()[0].winfo_children()[0]
 
         confusion_tab = self.create_text_tab(notebook, "Confusion Matrix")
         notebook.add(confusion_tab, text="  Confusion Matrix  ")
-        self.confusion_text = confusion_tab.winfo_children()[0]
+        self.confusion_text = confusion_tab.winfo_children()[0].winfo_children()[0]
         
         classification_tab = tk.Frame(notebook, bg='#ffffff')
         notebook.add(classification_tab, text="  Sample Classification  ")
@@ -263,6 +264,18 @@ class GUI:
                     messagebox.showerror("Error", f"Number of neurons in layer {i+1} must be positive")
                     return
                 neurons_per_layer.append(neurons)
+
+
+            # Call the external initializer
+            self.network = init_network(
+                hidden_layers=num_layers,
+                hidden_neurons=neurons_per_layer,
+                learning_rate=self.learning_rate.get(),
+                activation_function=self.activation_function.get(),
+                use_bias=self.use_bias.get()
+        
+            )
+            
             
             # Display initialization information
             self.training_text.delete(1.0, tk.END)
@@ -277,9 +290,10 @@ class GUI:
             self.training_text.insert(tk.END, f"\nNumber of input features: 5\n")
             self.training_text.insert(tk.END, f"Number of output classes: 3\n")
             self.training_text.insert(tk.END, f"\n✓ Network initialized with random weights!\n")
-            
+             
+
             self.status_var.set("✓ Network initialized successfully")
-            
+                
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {str(e)}")
 
