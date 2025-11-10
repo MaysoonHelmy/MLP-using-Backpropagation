@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 from network_init import initialize_network as init_network
-
+from preprocessing import split_the_species ,fit_preprocessor,transform_preprocessor
+from MLP import MLP
 class GUI:
     def __init__(self, root):
         self.root = root
@@ -80,8 +81,8 @@ class GUI:
         bias_check.pack(side=tk.LEFT, padx=5)
         
         tk.Label(row3, text="Activation Function:", font=('Arial', 9), bg='#ffffff', anchor='w').pack(side=tk.LEFT, padx=(40, 5))
-        
-        activation_combo = ttk.Combobox(row3, textvariable=self.activation_function,values=["Sigmoid", "Hyperbolic Tangent"], state="readonly", width=18, font=('Arial', 9))
+        "Hyperbolic Tangent"
+        activation_combo = ttk.Combobox(row3, textvariable=self.activation_function,values=["Sigmoid", ], state="readonly", width=18, font=('Arial', 9))
         activation_combo.pack(side=tk.LEFT, padx=5)
         
         button_frame = tk.Frame(main_container, bg='#f0f0f0')
@@ -297,8 +298,30 @@ class GUI:
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {str(e)}")
 
+    def Preprocessing(self):
+        self.train_df, self.test_df= split_the_species()
+        self.fitted_preprocessor, self.train_df = fit_preprocessor(self.train_df)
+        self.test_df = transform_preprocessor(self.test_df, self.fitted_preprocessor)
+
+        self.X_train = self.train_df.drop('Species', axis=1)
+        self.X_test = self.test_df.drop('Species', axis=1)
+        self.y_train = self.train_df['Species']
+        self.y_test = self.test_df['Species']
+
+        return
+
     def train_network(self):
-       return
+        try:
+            self.Preprocessing()
+            mlp = MLP(self.network)
+            mlp.train(self.X_train, self.y_train, epochs=self.epochs.get())
+            self.status_var.set("✓ Network trained successfully!")
+            self.training_text.insert(tk.END, "\nTraining complete!\n")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Training failed: {str(e)}")
+
+        return
 
     def test_network(self):
         return

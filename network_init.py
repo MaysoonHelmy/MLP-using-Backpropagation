@@ -17,5 +17,5 @@ def initialize_network(hidden_layers, hidden_neurons, learning_rate, activation_
         network['weights'].append(w)
         network['biases'].append(b)
 
-
+    print("done")
     return network
