@@ -28,7 +28,8 @@ class GUI:
         self.use_bias = tk.BooleanVar(value=True)
         self.activation_function = tk.StringVar(value="Sigmoid")
         self.hidden_neurons = []
-        
+        self.training_mode = tk.StringVar(value="Stochastic")
+
         self.create_gui()
         
     def create_gui(self):
@@ -82,9 +83,22 @@ class GUI:
         
         tk.Label(row3, text="Activation Function:", font=('Arial', 9), bg='#ffffff', anchor='w').pack(side=tk.LEFT, padx=(40, 5))
         "Hyperbolic Tangent"
-        activation_combo = ttk.Combobox(row3, textvariable=self.activation_function,values=["Sigmoid", ], state="readonly", width=18, font=('Arial', 9))
+        activation_combo = ttk.Combobox(row3, textvariable=self.activation_function,values=["Sigmoid", "Hyperbolic Tangent"], state="readonly", width=18, font=('Arial', 9))
         activation_combo.pack(side=tk.LEFT, padx=5)
-        
+        ##
+        tk.Label(row3, text="Training Mode:", font=('Arial', 9), bg='#ffffff', width=20, anchor='w').pack(side=tk.LEFT,
+                                                                                                          padx=(40, 5))
+
+        mode_combo = ttk.Combobox(
+            row3,
+            textvariable=self.training_mode,
+            values=["Stochastic","Batch-only" ],
+            state="readonly",
+            width=18,
+            font=('Arial', 9)
+        )
+        mode_combo.pack(side=tk.LEFT, padx=5)
+        ##
         button_frame = tk.Frame(main_container, bg='#f0f0f0')
         button_frame.pack(fill=tk.X, pady=15)
         
@@ -288,6 +302,7 @@ class GUI:
             self.training_text.insert(tk.END, f"Learning rate (eta): {self.learning_rate.get()}\n")
             self.training_text.insert(tk.END, f"Activation function: {self.activation_function.get()}\n")
             self.training_text.insert(tk.END, f"Use bias: {self.use_bias.get()}\n")
+            self.training_text.insert(tk.END, f"training_mode: {self.training_mode.get()}\n")
             self.training_text.insert(tk.END, f"\nNumber of input features: 5\n")
             self.training_text.insert(tk.END, f"Number of output classes: 3\n")
             self.training_text.insert(tk.END, f"\n✓ Network initialized with random weights!\n")
@@ -314,7 +329,7 @@ class GUI:
         try:
             self.Preprocessing()
             mlp = MLP(self.network)
-            mlp.train(self.X_train, self.y_train, epochs=self.epochs.get())
+            mlp.train(self.X_train, self.y_train, epochs=self.epochs.get(),training_mode=self.training_mode.get())
             self.status_var.set("✓ Network trained successfully!")
             self.training_text.insert(tk.END, "\nTraining complete!\n")
 

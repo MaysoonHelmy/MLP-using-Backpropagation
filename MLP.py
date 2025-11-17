@@ -37,14 +37,17 @@ class MLP:
     def backward(self, X, y, activations, inputs):
         pass
 
-    def train(self, X, y, epochs=100):
+    def train(self, X, y, epochs=100,training_mode="Stochastic"):
         for epoch in range(epochs):
             # Loop over each sample individually (SGD)
-            for i in range(X.shape[0]):
+            if training_mode == "Stochastic":
+              for i in range(X.shape[0]):
                 xi = X[i:i + 1]  # Take a single row (sample)
                 yi = y[i:i + 1]  # Take the corresponding target
-                activations, inputs = self.forward(xi)
+                activations, inputs = self.forward(xi)  #activations> after activation fn / inputs > before activation fn
                 self.backward(xi, yi, activations, inputs)
-
+            elif training_mode == "Batch-only":
+                activations, inputs = self.forward(X)  # activations> after activation fn / inputs > before activation fn
+                self.backward(X, y, activations, inputs)
     def predict(self, X):
         pass
