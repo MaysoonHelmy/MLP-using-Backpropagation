@@ -3,9 +3,11 @@ from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
+import pandas as pd  
 from network_init import initialize_network as init_network
-from preprocessing import split_the_species ,fit_preprocessor,transform_preprocessor
+from preprocessing import split_the_species, fit_preprocessor, transform_preprocessor
 from MLP import MLP
+
 class GUI:
     def __init__(self, root):
         self.root = root
@@ -142,25 +144,49 @@ class GUI:
         classification_tab = tk.Frame(notebook, bg='#ffffff')
         notebook.add(classification_tab, text="  Sample Classification  ")
         
-        class_container = tk.Frame(classification_tab, bg='#ffffff')
-        class_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        tk.Label(class_container, text="Enter sample features (5 values separated by commas):", font=('Arial', 10, 'bold'), bg='#ffffff').pack(anchor='w', pady=(0, 10))
-        
-        entry_frame = tk.Frame(class_container, bg='#ffffff')
-        entry_frame.pack(fill=tk.X, pady=10)
-        
+                # Create a frame for the entire Sample Classification content
+        class_content_frame = tk.Frame(classification_tab, bg='#ffffff')
+        class_content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # Input section
+        tk.Label(class_content_frame, text="Enter sample features (5 values separated by commas):", 
+                 font=('Arial', 10, 'bold'), bg='#ffffff').pack(anchor='w', pady=(0, 0))
+
+        entry_frame = tk.Frame(class_content_frame, bg='#ffffff')
+        entry_frame.pack(fill=tk.X, pady=0)
+
         self.sample_entry = ttk.Entry(entry_frame, width=50, font=('Arial', 10))
         self.sample_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-        
-        classify_btn2 = tk.Button(entry_frame, text="Classify", command=self.classify_sample, bg='#9b59b6', fg='white',relief=tk.FLAT, font=('Arial', 9, 'bold'), width=12, cursor='hand2')
+        classify_btn2 = tk.Button(entry_frame, text="Classify", command=self.classify_sample, 
+                                  bg='#9b59b6', fg='white', relief=tk.FLAT, 
+                                  font=('Arial', 9, 'bold'), width=12, cursor='hand2')
         classify_btn2.pack(side=tk.LEFT)
-        
-        result_frame = tk.Frame(class_container, bg='#ecf0f1', relief=tk.SOLID, borderwidth=1)
-        result_frame.pack(fill=tk.BOTH, expand=True, pady=20)
-        
-        self.classification_result = tk.Label(result_frame, text="Result will appear here",  font=('Arial', 12), bg='#ecf0f1',  fg='#2c3e50', pady=30)
-        self.classification_result.pack()
+
+        # Result display area — fills remaining space
+        result_frame = tk.Frame(class_content_frame, bg='#ffffff')
+        result_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 0))
+
+        # Create Text widget with scrollbar (matches Training Results style)
+        self.classification_result_text = tk.Text(
+            result_frame,
+            font=('Consolas', 9),
+            bg='#fafafa',
+            fg='#2c3e50',
+            relief=tk.FLAT,
+            borderwidth=1,
+            padx=10,
+            pady=10,
+            wrap='word',
+            state='disabled'
+        )
+
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(result_frame, orient='vertical', command=self.classification_result_text.yview)
+        self.classification_result_text.configure(yscrollcommand=scrollbar.set)
+
+        # Pack them side by side, fill all space
+        self.classification_result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15, 0), pady=5)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 5), pady=5)
         
 
         right_frame = tk.Frame(results_container, bg='#f0f0f0')
@@ -300,6 +326,7 @@ class GUI:
             self.training_text.insert(tk.END, f"Number of hidden layers: {num_layers}\n")
             self.training_text.insert(tk.END, f"Neurons per hidden layer: {neurons_per_layer}\n")
             self.training_text.insert(tk.END, f"Learning rate (eta): {self.learning_rate.get()}\n")
+            self.training_text.insert(tk.END, f"epochs: {self.epochs.get()}\n")
             self.training_text.insert(tk.END, f"Activation function: {self.activation_function.get()}\n")
             self.training_text.insert(tk.END, f"Use bias: {self.use_bias.get()}\n")
             self.training_text.insert(tk.END, f"training_mode: {self.training_mode.get()}\n")
@@ -328,20 +355,82 @@ class GUI:
     def train_network(self):
         try:
             self.Preprocessing()
-            mlp = MLP(self.network)
-            mlp.train(self.X_train, self.y_train, epochs=self.epochs.get(),training_mode=self.training_mode.get())
+            
+            # Convert labels to one-hot encoding
+            num_classes = 3
+            self.y_train_onehot = np.zeros((len(self.y_train), num_classes))
+            for i, label in enumerate(self.y_train):
+                self.y_train_onehot[i, label] = 1
+            
+            self.y_test_onehot = np.zeros((len(self.y_test), num_classes))
+            for i, label in enumerate(self.y_test):
+                self.y_test_onehot[i, label] = 1
+            
+            self.mlp = MLP(self.network)
+            self.mlp.train(self.X_train, self.y_train_onehot, epochs=self.epochs.get(), training_mode=self.training_mode.get())
+            # Compute training accuracy
+            y_train_pred = self.mlp.predict(self.X_train)
+            y_true_train = np.argmax(self.y_train_onehot, axis=1)
+            train_conf_mat = np.zeros((3, 3), dtype=int)
+            for t, p in zip(y_true_train, y_train_pred):
+                train_conf_mat[t, p] += 1
+            train_accuracy = np.trace(train_conf_mat) / np.sum(train_conf_mat)
+
+            # Show training accuracy in GUI
+            self.training_text.insert(tk.END, f"\nTraining Accuracy: {train_accuracy:.4f} ({train_accuracy*100:.2f}%)\n")
+
             self.status_var.set("✓ Network trained successfully!")
             self.training_text.insert(tk.END, "\nTraining complete!\n")
+            
+            # Draw decision boundary after training
+            self.draw_decision_boundary()
 
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")
 
-        return
-
     def test_network(self):
-        return
+        try:
+            if not hasattr(self, 'mlp') or not hasattr(self, 'X_test'):
+                messagebox.showerror("Error", "Please train the network first!")
+                return
             
-    def update_confusion_matrix(self):
+            # Make predictions on test set
+            y_pred = self.mlp.predict(self.X_test)
+            y_true = np.argmax(self.y_test_onehot, axis=1)
+            
+            # Calculate confusion matrix
+            num_classes = 3
+            confusion_mat = np.zeros((num_classes, num_classes), dtype=int)
+            
+            for true, pred in zip(y_true, y_pred):
+                confusion_mat[true, pred] += 1
+            
+            # Calculate accuracy
+            accuracy = np.trace(confusion_mat) / np.sum(confusion_mat)
+            
+            # Update confusion matrix display
+            self.update_confusion_matrix(confusion_mat, accuracy)
+            
+            # Update testing results
+            self.testing_text.delete(1.0, tk.END)
+            self.testing_text.insert(tk.END, "=" * 60 + "\n")
+            self.testing_text.insert(tk.END, "TESTING RESULTS\n")
+            self.testing_text.insert(tk.END, "=" * 60 + "\n\n")
+            self.testing_text.insert(tk.END, f"Test samples: {len(self.X_test)}\n")
+            self.testing_text.insert(tk.END, f"Correct predictions: {np.trace(confusion_mat)}\n")
+            self.testing_text.insert(tk.END, f"Overall Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)\n\n")
+            
+            # Display per-class accuracy
+            for i in range(num_classes):
+                class_acc = confusion_mat[i, i] / np.sum(confusion_mat[i, :]) if np.sum(confusion_mat[i, :]) > 0 else 0
+                self.testing_text.insert(tk.END, f"Class {i+1} Accuracy: {class_acc:.4f} ({class_acc*100:.2f}%)\n")
+            
+            self.status_var.set("✓ Network tested successfully!")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Testing failed: {str(e)}")
+            
+    def update_confusion_matrix(self, confusion_mat, accuracy):
         self.confusion_text.delete(1.0, tk.END)
         self.confusion_text.insert(tk.END, "=" * 60 + "\n")
         self.confusion_text.insert(tk.END, "CONFUSION MATRIX\n")
@@ -350,15 +439,21 @@ class GUI:
         # Create confusion matrix
         matrix = [
             ["Actual \\ Predicted", "Class 1", "Class 2", "Class 3"],
-            ["Class 1", "18", "1", "1"],
-            ["Class 2", "2", "17", "1"],
-            ["Class 3", "0", "1", "19"]
         ]
+        
+        for i in range(3):
+            row = [f"Class {i+1}"]
+            for j in range(3):
+                row.append(str(confusion_mat[i, j]))
+            matrix.append(row)
         
         for row in matrix:
             self.confusion_text.insert(tk.END, f"{row[0]:<20} {row[1]:<12} {row[2]:<12} {row[3]:<12}\n")
         
-        self.confusion_text.insert(tk.END, f"\n\nOverall Accuracy: 54/60 = 90.0%\n")
+        self.confusion_text.insert(tk.END, f"\n\nOverall Accuracy: {np.trace(confusion_mat)}/{np.sum(confusion_mat)} = {accuracy*100:.1f}%\n")
+        
+        # Draw heatmap
+        self.draw_confusion_matrix_heatmap(confusion_mat, accuracy)
     
     def classify_sample(self):
         try:
@@ -372,18 +467,47 @@ class GUI:
                 messagebox.showerror("Error", "Please enter exactly 5 feature values")
                 return
             
-            # Simulate classification
-            class_probabilities = [0.1, 0.7, 0.2]
-            predicted_class = class_probabilities.index(max(class_probabilities)) + 1
+            if not hasattr(self, 'mlp'):
+                messagebox.showerror("Error", "Please train the network first!")
+                return
             
-            result_text = f"Predicted Class: {predicted_class}\n\n"
-            result_text += f"Class 1: {class_probabilities[0]:.3f}\n"
-            result_text += f"Class 2: {class_probabilities[1]:.3f}\n"
-            result_text += f"Class 3: {class_probabilities[2]:.3f}"
+            # Preprocess sample (scale it like training data)
+            sample_array = np.array(features).reshape(1, -1)
+            sample_df = pd.DataFrame(sample_array, columns=self.X_train.columns)
             
-            self.classification_result.config(text=result_text)
-            self.status_var.set(f"✓ Sample classified as Class {predicted_class}")
+            # Apply same scaler used during training
+            sample_df[self.fitted_preprocessor['scaler'].feature_names_in_] = \
+                self.fitted_preprocessor['scaler'].transform(sample_df[self.fitted_preprocessor['scaler'].feature_names_in_])
             
+            sample_processed = sample_df.values
+
+            # Predict
+            prediction = self.mlp.predict(sample_processed)[0]
+            activations, _ = self.mlp.forward(sample_processed)
+            probabilities = activations[-1][0]
+
+            # Format result
+            result_lines = [
+                "📊 CLASSIFICATION RESULT",
+                "=" * 25,
+                f"✅ Predicted Class: {prediction + 1}",
+                "",
+                "📈 Class Probabilities:",
+                f"  Class 1: {probabilities[0]:.6f}",
+                f"  Class 2: {probabilities[1]:.6f}",
+                f"  Class 3: {probabilities[2]:.6f}",
+                "",
+                f"🏆 Confidence: {max(probabilities):.6f} ({max(probabilities)*100:.2f}%)"
+            ]
+            result_text = "\n".join(result_lines)
+            # Clear and update the Text widget
+            self.classification_result_text.config(state='normal')
+            self.classification_result_text.delete(1.0, tk.END)
+            self.classification_result_text.insert(tk.END, result_text)
+            self.classification_result_text.config(state='disabled')  # Read-only
+
+            self.status_var.set(f"✓ Sample classified as Class {prediction + 1}")
+
         except ValueError:
             messagebox.showerror("Error", "Please enter valid numeric values")
         except Exception as e:
@@ -392,47 +516,46 @@ class GUI:
     def draw_decision_boundary(self):
         self.boundary_ax.clear()
         
-        # Generate sample data for 3 classes
-        np.random.seed(42)
-        n_samples = 50
+        if not hasattr(self, 'mlp') or not hasattr(self, 'X_train'):
+            self.boundary_ax.text(0.5, 0.5, 'Train network to see\ndecision boundary', ha='center', va='center', fontsize=11, color='gray', transform=self.boundary_ax.transAxes)
+            self.boundary_canvas.draw()
+            return
         
-        # Class 1 (red)
-        class1_x = np.random.randn(n_samples) * 0.5 + 1
-        class1_y = np.random.randn(n_samples) * 0.5 + 1
+        # Use the first two features for visualization
+        X_vis = self.X_train.iloc[:, :2].values
+        y_vis = self.y_train.values
         
-        # Class 2 (blue)
-        class2_x = np.random.randn(n_samples) * 0.5 - 1
-        class2_y = np.random.randn(n_samples) * 0.5 + 1
-        
-        # Class 3 (green)
-        class3_x = np.random.randn(n_samples) * 0.5
-        class3_y = np.random.randn(n_samples) * 0.5 - 1
-        
-        # Create mesh for decision boundary
-        x_min, x_max = -3, 3
-        y_min, y_max = -3, 3
+        # Create mesh grid for decision boundary
+        x_min, x_max = X_vis[:, 0].min() - 1, X_vis[:, 0].max() + 1
+        y_min, y_max = X_vis[:, 1].min() - 1, X_vis[:, 1].max() + 1
         xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
                             np.linspace(y_min, y_max, 100))
         
-        # Simulate decision boundary regions
-        Z = np.zeros(xx.shape)
-        for i in range(xx.shape[0]):
-            for j in range(xx.shape[1]):
-                x, y = xx[i, j], yy[i, j]
-                if x > 0 and y > 0:
-                    Z[i, j] = 0  # Class 1
-                elif x < 0 and y > 0:
-                    Z[i, j] = 1  # Class 2
-                else:
-                    Z[i, j] = 2  # Class 3
+        # Predict on mesh grid
+        mesh_points = np.c_[xx.ravel(), yy.ravel()]
+        
+        # Use mean of other features for realistic visualization
+        if self.X_train.shape[1] > 2:
+            feature_means = self.X_train.mean(axis=0).values  # Mean of all 5 features
+            padding = np.tile(feature_means[2:], (len(mesh_points), 1))  # Repeat for each mesh point
+            mesh_points = np.hstack([mesh_points, padding])
+        
+        Z = self.mlp.predict(mesh_points)
+        Z = Z.reshape(xx.shape)
         
         # Plot decision boundary
-        self.boundary_ax.contourf(xx, yy, Z, alpha=0.3, levels=2, colors=['#ff9999', '#9999ff', '#99ff99'])
+        self.boundary_ax.contourf(xx, yy, Z, alpha=0.3, levels=[-0.5, 0.5, 1.5, 2.5], colors=['#ff9999', '#9999ff', '#99ff99'])
         
-        # Plot data points
-        self.boundary_ax.scatter(class1_x, class1_y, c='red', marker='o', label='Class 1', s=30, edgecolors='darkred', alpha=0.7)
-        self.boundary_ax.scatter(class2_x, class2_y, c='blue', marker='s',  label='Class 2', s=30, edgecolors='darkblue', alpha=0.7)
-        self.boundary_ax.scatter(class3_x, class3_y, c='green', marker='^', label='Class 3', s=30, edgecolors='darkgreen', alpha=0.7)
+        # Plot training data points
+        colors = ['red', 'blue', 'green']
+        markers = ['o', 's', '^']
+        for i in range(3):
+            mask = y_vis == i
+            if np.any(mask):
+                self.boundary_ax.scatter(X_vis[mask, 0], X_vis[mask, 1], 
+                                       c=colors[i], marker=markers[i], 
+                                       label=f'Class {i+1}', s=30, 
+                                       edgecolors='dark'+colors[i], alpha=0.7)
         
         self.boundary_ax.set_xlabel('Feature 1', fontsize=9)
         self.boundary_ax.set_ylabel('Feature 2', fontsize=9)
@@ -445,18 +568,11 @@ class GUI:
         self.boundary_fig.tight_layout()
         self.boundary_canvas.draw()
     
-    def draw_confusion_matrix_heatmap(self):
+    def draw_confusion_matrix_heatmap(self, confusion_mat, accuracy):
         self.confusion_ax.clear()
         
-        # Sample confusion matrix data
-        confusion_matrix = np.array([
-            [18, 1, 1],
-            [2, 17, 1],
-            [0, 1, 19]
-        ])
-        
         # Create heatmap
-        im = self.confusion_ax.imshow(confusion_matrix, cmap='Blues', aspect='auto')
+        im = self.confusion_ax.imshow(confusion_mat, cmap='Blues', aspect='auto')
         
         # Set ticks and labels
         classes = ['Class 1', 'Class 2', 'Class 3']
@@ -470,17 +586,16 @@ class GUI:
  
         for i in range(len(classes)):
             for j in range(len(classes)):
-                text = self.confusion_ax.text(j, i, confusion_matrix[i, j],
+                text = self.confusion_ax.text(j, i, confusion_mat[i, j],
                                             ha="center", va="center", 
-                                            color="white" if confusion_matrix[i, j] > 10 else "black",
+                                            color="white" if confusion_mat[i, j] > np.max(confusion_mat) / 2 else "black",
                                             fontsize=12, fontweight='bold')
         
         self.confusion_ax.set_xlabel('Predicted Class', fontsize=9, fontweight='bold')
         self.confusion_ax.set_ylabel('Actual Class', fontsize=9, fontweight='bold')
-        self.confusion_ax.set_title('Confusion Matrix Heatmap\nAccuracy: 90.0%', 
+        self.confusion_ax.set_title('Confusion Matrix Heatmap\nAccuracy: {:.1f}%'.format(accuracy*100), 
                                    fontsize=10, fontweight='bold')
         
-
         cbar = self.confusion_fig.colorbar(im, ax=self.confusion_ax, fraction=0.046, pad=0.04)
         cbar.set_label('Number of Samples', fontsize=8)
         

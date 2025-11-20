@@ -3,32 +3,24 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.model_selection import train_test_split
 
-# Load the Dataset
 df_raw = pd.read_csv("penguins.csv")
 
-# Split the Data (30 Train, 20 Test)
-def split_species( species):
+def split_data( species):
     subset = df_raw[df_raw['Species'] == species].copy()
     train_sub, test_sub = train_test_split(subset,train_size=30,test_size=20,random_state=42)
     return train_sub, test_sub
 
-
 def split_the_species( train_size=30, test_size=20, random_state=42):
-    train1, test1 = split_species( "Adelie")
-    train2, test2 = split_species( "Chinstrap")
-    train3, test3 = split_species( "Gentoo")
+    train1, test1 = split_data( "Adelie")
+    train2, test2 = split_data( "Chinstrap")
+    train3, test3 = split_data( "Gentoo")
 
     # Merge both species sets
     train_df = pd.concat([train1, train2, train3], axis=0).sample(frac=1, random_state=random_state).reset_index(drop=True)
     test_df = pd.concat([test1, test2, test3], axis=0).sample(frac=1, random_state=random_state).reset_index(drop=True)
 
-    print(f"Train: {len(train_df)} samples, Test: {len(test_df)} samples")
-    print(train_df['Species'].value_counts())
-    print(test_df['Species'].value_counts())
-
     return train_df, test_df
 
-# Preprocessing 
 def fit_preprocessor(train_df):
     df = train_df.copy()
 
@@ -55,7 +47,6 @@ def fit_preprocessor(train_df):
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     return {'medians': medians,'encoders': encoder_dict,'scaler': scaler,'columns': df.columns}, df
-
 
 def transform_preprocessor(df, fitted):
     df = df.copy()
