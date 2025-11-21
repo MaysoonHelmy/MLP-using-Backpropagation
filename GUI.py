@@ -13,7 +13,6 @@ class GUI:
         self.root.geometry("1400x800")
         self.root.configure(bg='#f0f0f0')
         
-        # Initialize backend
         self.backend = MLPBackend()
         
         style = ttk.Style()
@@ -96,9 +95,6 @@ class GUI:
         
         train_btn = tk.Button(button_frame, text="Train Network", command=self.train_network, bg='#27ae60', fg='white',relief=tk.FLAT, **btn_style)
         train_btn.pack(side=tk.LEFT, padx=5)
-        
-        reset_btn = tk.Button(button_frame, text="Reset Training", command=self.reset_training, bg='#e74c3c', fg='white', relief=tk.FLAT, **btn_style)
-        reset_btn.pack(side=tk.LEFT, padx=5)
         
         test_btn = tk.Button(button_frame, text="Test Network",  command=self.test_network, bg='#f39c12', fg='white',relief=tk.FLAT, **btn_style)
         test_btn.pack(side=tk.LEFT, padx=5)
@@ -263,7 +259,6 @@ class GUI:
                     return
                 neurons_per_layer.append(neurons)
 
-            # Initialize network through backend
             self.backend.initialize_network(
                 hidden_layers=num_layers,
                 hidden_neurons=neurons_per_layer,
@@ -272,7 +267,6 @@ class GUI:
                 use_bias=self.use_bias.get()
             )
               
-            # Display initialization information
             self.training_text.config(state='normal')
             self.training_text.delete(1.0, tk.END)
             self.training_text.insert(tk.END, "=" * 60 + "\n")
@@ -281,111 +275,50 @@ class GUI:
             self.training_text.insert(tk.END, f"Number of hidden layers: {num_layers}\n")
             self.training_text.insert(tk.END, f"Neurons per hidden layer: {neurons_per_layer}\n")
             self.training_text.insert(tk.END, f"Learning rate (eta): {self.learning_rate.get()}\n")
-            self.training_text.insert(tk.END, f"epochs: {self.epochs.get()}\n")
+            self.training_text.insert(tk.END, f"Epochs: {self.epochs.get()}\n")
             self.training_text.insert(tk.END, f"Activation function: {self.activation_function.get()}\n")
             self.training_text.insert(tk.END, f"Use bias: {self.use_bias.get()}\n")
-            self.training_text.insert(tk.END, f"\nNumber of input features: 5\n")
-            self.training_text.insert(tk.END, f"Number of output classes: 3\n")
-            self.training_text.insert(tk.END, f"\n✓ Network initialized with random weights!\n")
+            self.training_text.insert(tk.END, f"\nInput feature count: 5\n")
+            self.training_text.insert(tk.END, f"Output class count: 3\n\n")
             self.training_text.config(state='disabled')
 
-            self.status_var.set("✓ Network initialized successfully")
+            self.status_var.set(" Network initialized successfully")
                 
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {str(e)}")
 
     def train_network(self):
         try:
-            # Check if network is initialized
             training_info = self.backend.get_training_info()
             if not training_info['has_network']:
                 messagebox.showerror("Error", "Please initialize the network first!")
                 return
             
-            # Train network through backend
-            train_accuracy = self.backend.train_network(epochs=self.epochs.get())
-            
-            # Get updated training info
-            training_info = self.backend.get_training_info()
-            
-            # Show training accuracy in GUI
+            train_accuracy = self.backend.train_network(epochs=self.epochs.get())            
+            training_info = self.backend.get_training_info()            
             self.training_text.config(state='normal')
-            if training_info['epochs_completed'] == self.epochs.get():
-                # First training session
-                self.training_text.insert(tk.END, f"\n--- Initial Training ({self.epochs.get()} epochs) ---\n")
-            else:
-                # Additional training
-                self.training_text.insert(tk.END, f"\n--- Additional Training ({self.epochs.get()} epochs) ---\n")
-                self.training_text.insert(tk.END, f"Total epochs completed: {training_info['epochs_completed']}\n")
-            
-            self.training_text.insert(tk.END, f"Training Accuracy: {train_accuracy:.4f} ({train_accuracy*100:.2f}%)\n")
+            self.training_text.insert(tk.END, f"Training accuracy: {train_accuracy:.4f} ({train_accuracy*100:.2f}%)\n")
             self.training_text.config(state='disabled')
-
-            self.status_var.set("✓ Network trained successfully!")
-            
-            # Draw decision boundary after training
+            self.status_var.set(" Network trained successfully!")            
             self.draw_decision_boundary()
 
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")
 
-    def reset_training(self):
-        """Reset the training while keeping the network architecture"""
-        try:
-            training_info = self.backend.get_training_info()
-            if not training_info['has_network']:
-                messagebox.showerror("Error", "Please initialize the network first!")
-                return
-            
-            if not training_info['is_trained']:
-                messagebox.showinfo("Info", "Network is not trained yet. Nothing to reset.")
-                return
-            
-            # Reset training through backend
-            self.backend.reset_training()
-            
-            # Update GUI
-            self.training_text.config(state='normal')
-            self.training_text.insert(tk.END, "\n" + "=" * 50 + "\n")
-            self.training_text.insert(tk.END, "TRAINING RESET\n")
-            self.training_text.insert(tk.END, "=" * 50 + "\n")
-            self.training_text.insert(tk.END, "✓ Weights re-initialized with random values\n")
-            self.training_text.insert(tk.END, "✓ Ready for fresh training\n")
-            self.training_text.config(state='disabled')
-            
-            # Clear decision boundary
-            self.boundary_ax.clear()
-            self.boundary_ax.text(0.5, 0.5, 'Train network to see\ndecision boundary', ha='center', va='center', fontsize=11, color='gray', transform=self.boundary_ax.transAxes)
-            self.boundary_ax.set_title('Decision Boundary Visualization', fontsize=10, fontweight='bold')
-            self.boundary_ax.set_xlabel('Feature 1', fontsize=9)
-            self.boundary_ax.set_ylabel('Feature 2', fontsize=9)
-            self.boundary_ax.grid(True, alpha=0.3)
-            self.boundary_canvas.draw()
-            
-            self.status_var.set("✓ Training reset - ready for fresh training")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Reset failed: {str(e)}")
-
     def test_network(self):
         try:
-            # Test network through backend
-            test_results = self.backend.test_network()
-            
-            # Update confusion matrix display
+            test_results = self.backend.test_network()            
             self.update_confusion_matrix(test_results['confusion_mat'], test_results['accuracy'])
             
-            # Update testing results
             self.testing_text.config(state='normal')
             self.testing_text.delete(1.0, tk.END)
             self.testing_text.insert(tk.END, "=" * 60 + "\n")
-            self.testing_text.insert(tk.END, "TESTING RESULTS\n")
+            self.testing_text.insert(tk.END, "TESTING SUMMARY\n")
             self.testing_text.insert(tk.END, "=" * 60 + "\n\n")
-            self.testing_text.insert(tk.END, f"Test samples: {test_results['test_samples']}\n")
+            self.testing_text.insert(tk.END, f"Samples evaluated: {test_results['test_samples']}\n")
             self.testing_text.insert(tk.END, f"Correct predictions: {np.trace(test_results['confusion_mat'])}\n")
-            self.testing_text.insert(tk.END, f"Overall Accuracy: {test_results['accuracy']:.4f} ({test_results['accuracy']*100:.2f}%)\n\n")
+            self.testing_text.insert(tk.END, f"Overall accuracy: {test_results['accuracy']:.4f} ({test_results['accuracy']*100:.2f}%)\n\n")
             
-            # Display per-class accuracy with more details
             for i in range(3):
                 true_positives = test_results['confusion_mat'][i, i]
                 total_class = np.sum(test_results['confusion_mat'][i, :])
@@ -433,10 +366,8 @@ class GUI:
                 messagebox.showerror("Error", "Please enter exactly 5 feature values")
                 return
             
-            # Classify sample through backend
             classification_result = self.backend.classify_sample(features)
             
-            # Format result
             result_lines = [
                 "📊 CLASSIFICATION RESULT",
                 "=" * 25,
@@ -451,7 +382,6 @@ class GUI:
             ]
             result_text = "\n".join(result_lines)
             
-            # Clear and update the Text widget
             self.classification_result_text.config(state='normal')
             self.classification_result_text.delete(1.0, tk.END)
             self.classification_result_text.insert(tk.END, result_text)
@@ -465,9 +395,7 @@ class GUI:
             messagebox.showerror("Error", f"Classification failed: {str(e)}")
     
     def draw_decision_boundary(self):
-        self.boundary_ax.clear()
-        
-        # Get decision boundary data from backend
+        self.boundary_ax.clear()        
         boundary_data = self.backend.get_decision_boundary_data()
         
         if boundary_data is None:
@@ -475,12 +403,8 @@ class GUI:
             self.boundary_canvas.draw()
             return
         
-        xx, yy, Z, X_vis, y_vis = boundary_data
-        
-        # Plot decision boundary
-        self.boundary_ax.contourf(xx, yy, Z, alpha=0.3, levels=[-0.5, 0.5, 1.5, 2.5], colors=['#ff9999', '#9999ff', '#99ff99'])
-        
-        # Plot training data points
+        xx, yy, Z, X_vis, y_vis = boundary_data        
+        self.boundary_ax.contourf(xx, yy, Z, alpha=0.3, levels=[-0.5, 0.5, 1.5, 2.5], colors=['#ff9999', '#9999ff', '#99ff99'])        
         colors = ['red', 'blue', 'green']
         markers = ['o', 's', '^']
         for i in range(3):

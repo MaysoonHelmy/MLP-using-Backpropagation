@@ -15,7 +15,6 @@ def split_the_species( train_size=30, test_size=20, random_state=42):
     train2, test2 = split_data( "Chinstrap")
     train3, test3 = split_data( "Gentoo")
 
-    # Merge both species sets
     train_df = pd.concat([train1, train2, train3], axis=0).sample(frac=1, random_state=random_state).reset_index(drop=True)
     test_df = pd.concat([test1, test2, test3], axis=0).sample(frac=1, random_state=random_state).reset_index(drop=True)
 
@@ -24,7 +23,6 @@ def split_the_species( train_size=30, test_size=20, random_state=42):
 def fit_preprocessor(train_df):
     df = train_df.copy()
 
-    # Fill numeric missing values with median
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     medians = df[numeric_cols].median()
     df[numeric_cols] = df[numeric_cols].fillna(medians)
@@ -43,7 +41,6 @@ def fit_preprocessor(train_df):
     df[scale_cols] = scaler.fit_transform(df[scale_cols])
 
     df['Species'] = LabelEncoder().fit_transform(df['Species'])
-    # Shuffle the data
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     return {'medians': medians,'encoders': encoder_dict,'scaler': scaler,'columns': df.columns}, df
@@ -62,7 +59,6 @@ def transform_preprocessor(df, fitted):
     df[scale_cols] = fitted['scaler'].transform(df[scale_cols])
 
     df = df.reindex(columns=fitted['columns'], fill_value=0)
-    # Shuffle the data
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     return df
