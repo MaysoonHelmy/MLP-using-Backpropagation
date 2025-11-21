@@ -2,20 +2,38 @@ import numpy as np
 
 def initialize_network(hidden_layers, hidden_neurons, learning_rate, activation_function, use_bias):
 
-    input_features = 5
-    output_classes = 3
-    network = {'weights': [], 'biases': [], 'layers': hidden_neurons, 
-               'activation': activation_function, 'use_bias': use_bias, 'learning_rate': learning_rate}
-
-    layer_sizes = [input_features] + hidden_neurons + [output_classes]
-
-                       
-    for i in range(len(layer_sizes)-1):
-        # Small random numbers for weights
-        w = np.random.randn(layer_sizes[i], layer_sizes[i+1]) * 0.1
-        b = np.random.randn(layer_sizes[i+1]) * 0.1 if use_bias else np.zeros(layer_sizes[i+1])
-        network['weights'].append(w)
-        network['biases'].append(b)
-
-    print("done")
+    input_size = 5  
+    output_size = 3 
+    
+    layer_sizes = [input_size] + hidden_neurons + [output_size]
+    weights = []
+    biases = []
+    
+    print(f"Layer sizes: {layer_sizes}")
+    
+    # Initialize weights and biases for each layer
+    for i in range(len(layer_sizes) - 1):
+        current_size = layer_sizes[i]
+        next_size = layer_sizes[i + 1]
+        
+        # Random weights from -0.5 to 0.5
+        W = (np.random.rand(next_size, current_size) - 0.5)
+        weights.append(W)
+        
+        # ALWAYS ZERO BIASES
+        b = np.zeros(next_size)
+        biases.append(b)
+        
+        print(f"Layer {i}: {current_size} -> {next_size}, Weight shape: {W.shape}")
+    
+    network = {
+        'weights': weights,
+        'biases': biases,
+        'activation': activation_function,
+        'learning_rate': learning_rate,
+        'use_bias': use_bias,
+        'layers': len(weights)
+    }
+    
+    print("Network initialization complete!")
     return network
