@@ -387,13 +387,7 @@ class GUI:
             result_lines = [
                 "📊 CLASSIFICATION RESULT",
                 "=" * 25,
-                f"✅ Predicted Class: {classification_result['predicted_class']}",
-                "",
-                "📈 Class Probabilities:",
-                f"  Class 1: {classification_result['probabilities'][0]:.6f}",
-                f"  Class 2: {classification_result['probabilities'][1]:.6f}",
-                f"  Class 3: {classification_result['probabilities'][2]:.6f}",
-                "",
+                f"✅ Predicted Class: {classification_result['predicted_class']}\n",
                 f"🏆 Confidence: {classification_result['confidence']:.6f} ({classification_result['confidence']*100:.2f}%)"
             ]
             result_text = "\n".join(result_lines)
