@@ -29,8 +29,9 @@ def fit_preprocessor(train_df):
 
     encoder_dict = {}
     categorical_cols = df.select_dtypes(include=['object']).columns
+    categorical_features = [col for col in categorical_cols if col != 'Species']
 
-    for col in categorical_cols:
+    for col in categorical_features:
         le = LabelEncoder()
         df[col] = le.fit_transform(df[col])
         encoder_dict[col] = le
@@ -40,10 +41,24 @@ def fit_preprocessor(train_df):
     scale_cols = [c for c in df.select_dtypes(include=['float64', 'int64']).columns if c not in exclude]
     df[scale_cols] = scaler.fit_transform(df[scale_cols])
 
-    df['Species'] = LabelEncoder().fit_transform(df['Species'])
+    target_encoder = LabelEncoder()
+    df['Species'] = target_encoder.fit_transform(df['Species'])
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    return {'medians': medians,'encoders': encoder_dict,'scaler': scaler,'columns': df.columns}, df
+    feature_columns = [col for col in df.columns if col != 'Species']
+    numeric_features = [col for col in numeric_cols if col != 'Species']
+
+    return {
+        'medians': medians,
+        'encoders': encoder_dict,
+        'scaler': scaler,
+        'columns': df.columns,
+        'feature_columns': feature_columns,
+        'numeric_features': numeric_features,
+        'categorical_features': categorical_features,
+        'scale_columns': scale_cols,
+        'target_encoder': target_encoder
+    }, df
 
 def transform_preprocessor(df, fitted):
     df = df.copy()
@@ -59,6 +74,10 @@ def transform_preprocessor(df, fitted):
     df[scale_cols] = fitted['scaler'].transform(df[scale_cols])
 
     df = df.reindex(columns=fitted['columns'], fill_value=0)
+    target_encoder = fitted.get('target_encoder')
+    if target_encoder is not None and 'Species' in df.columns:
+        df['Species'] = df['Species'].map(lambda x: x if x in target_encoder.classes_ else target_encoder.classes_[0])
+        df['Species'] = target_encoder.transform(df['Species'])
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     return df

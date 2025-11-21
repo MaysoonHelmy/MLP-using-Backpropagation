@@ -89,26 +89,56 @@ class MLPBackend:
         }
     
     def classify_sample(self, features):
-        if not hasattr(self, 'mlp') or self.mlp is None or not self.is_trained:
-            raise Exception("Please train the network first!")
-        
+        self._ensure_classification_ready()
+
         sample_array = np.array(features).reshape(1, -1)
         sample_df = pd.DataFrame(sample_array, columns=self.X_train.columns)
-        sample_df[self.fitted_preprocessor['scaler'].feature_names_in_] = \
-            self.fitted_preprocessor['scaler'].transform(sample_df[self.fitted_preprocessor['scaler'].feature_names_in_])
-        
+
+        fitted = self.fitted_preprocessor
+        numeric_cols = [col for col in fitted['numeric_features'] if col in sample_df.columns]
+        if numeric_cols:
+            sample_df[numeric_cols] = sample_df[numeric_cols].fillna(fitted['medians'][numeric_cols])
+
+        for col, encoder in fitted['encoders'].items():
+            if col not in sample_df.columns:
+                continue
+            value = sample_df.at[0, col]
+            safe_value = value if value in encoder.classes_ else encoder.classes_[0]
+            sample_df.at[0, col] = encoder.transform([safe_value])[0]
+
+        scale_cols = [col for col in fitted['scale_columns'] if col in sample_df.columns]
+        if scale_cols:
+            sample_df[scale_cols] = fitted['scaler'].transform(sample_df[scale_cols])
+
+        sample_df = sample_df[self.X_train.columns]
         sample_processed = sample_df.values
-        prediction = self.mlp.predict(sample_processed)[0]        
+
+        prediction = self.mlp.predict(sample_processed)[0]
         sample_flat = sample_processed[0]
         _, activations = self.mlp.forward(sample_flat)
         probabilities = activations[-1]
-        
+
         return {
             'predicted_class': prediction + 1,
             'probabilities': probabilities,
             'confidence': np.max(probabilities)
         }
-    
+
+    def _ensure_classification_ready(self):
+        if self.fitted_preprocessor is None or self.X_train is None:
+            raise Exception("Please train the network first!")
+        if not hasattr(self, 'mlp') or self.mlp is None or not self.is_trained:
+            raise Exception("Please train the network first!")
+
+    def get_feature_columns(self):
+        self._ensure_classification_ready()
+        return list(self.X_train.columns)
+
+    def get_numeric_feature_columns(self):
+        if self.fitted_preprocessor is None:
+            raise Exception("Please train the network first!")
+        return list(self.fitted_preprocessor.get('numeric_features', []))
+
     def get_decision_boundary_data(self):
         if not hasattr(self, 'mlp') or self.mlp is None or not self.is_trained or self.X_train is None:
             return None

@@ -129,7 +129,7 @@ class GUI:
         class_content_frame = tk.Frame(classification_tab, bg='#ffffff')
         class_content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        tk.Label(class_content_frame, text="Enter sample features (5 values separated by commas):", 
+        tk.Label(class_content_frame, text="Enter sample features in dataset order (CulmenLength, CulmenDepth, FlipperLength, OriginLocation, BodyMass) separated by commas:", 
                  font=('Arial', 10, 'bold'), bg='#ffffff').pack(anchor='w', pady=(0, 0))
 
         entry_frame = tk.Frame(class_content_frame, bg='#ffffff')
@@ -360,13 +360,29 @@ class GUI:
             if not sample_text:
                 messagebox.showerror("Error", "Please enter sample features")
                 return
-                
-            features = [float(x.strip()) for x in sample_text.split(',')]
-            if len(features) != 5:
-                messagebox.showerror("Error", "Please enter exactly 5 feature values")
+            raw_values = [value.strip() for value in sample_text.split(',')]
+            feature_names = self.backend.get_feature_columns()
+            if len(raw_values) != len(feature_names):
+                messagebox.showerror("Error", f"Please enter exactly {len(feature_names)} feature values")
                 return
-            
-            classification_result = self.backend.classify_sample(features)
+            try:
+                numeric_features = set(self.backend.get_numeric_feature_columns())
+            except Exception:
+                numeric_features = set()
+            parsed_features = []
+            for value, feature_name in zip(raw_values, feature_names):
+                if not value:
+                    messagebox.showerror("Error", f"Please provide a value for {feature_name}")
+                    return
+                if feature_name in numeric_features:
+                    try:
+                        parsed_features.append(float(value))
+                    except ValueError:
+                        messagebox.showerror("Error", f"{feature_name} must be a number")
+                        return
+                else:
+                    parsed_features.append(value)
+            classification_result = self.backend.classify_sample(parsed_features)
             
             result_lines = [
                 "📊 CLASSIFICATION RESULT",
